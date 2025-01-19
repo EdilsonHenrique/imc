@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulário IMC com Anexo e Exclusão</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+        button {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Calculadora de IMC com Anexo e Exclusão</h1>
+    <form id="formulario">
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" required>
+        <label for="peso">Peso (kg):</label>
+        <input type="number" id="peso" step="0.1" required>
+        <label for="altura">Altura (m):</label>
+        <input type="number" id="altura" step="0.01" required>
+        <label for="documento">Anexar Documento (PDF):</label>
+        <input type="file" id="documento" accept="application/pdf" required>
+        <button type="button" onclick="adicionarDados()">Adicionar</button>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Peso (kg)</th>
+                <th>Altura (m)</th>
+                <th>IMC</th>
+                <th>Documento</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="tabela-dados">
+            <!-- Dados serão carregados aqui -->
+        </tbody>
+    </table>
+
+    <script>
+        // Função para calcular o IMC
+        function calcularIMC(peso, altura) {
+            return (peso / (altura * altura)).toFixed(2);
+        }
+
+        // Função para converter arquivo em Base64
+        function lerArquivoBase64(arquivo) {
+            return new Promise((resolve, reject) => {
+                const leitor = new FileReader();
+                leitor.onload = () => resolve(leitor.result);
+                leitor.onerror = (error) => reject(error);
+                leitor.readAsDataURL(arquivo);
+            });
+        }
+
+        // Função para adicionar dados à tabela e salvar no Local Storage
+        async function adicionarDados() {
+            const nome = document.getElementById("nome").value;
+            const peso = parseFloat(document.getElementById("peso").value);
+            const altura = parseFloat(document.getElementById("altura").value);
+            const documento = document.getElementById("documento").files[0];
+
+            if (!nome || !peso || !altura || altura <= 0 || !documento) {
+                alert("Por favor, preencha todos os campos corretamente!");
+                return;
+            }
+
+            if (documento.type !== "application/pdf") {
+                alert("Por favor, anexe apenas arquivos PDF!");
+                return;
+            }
+
+            const imc = calcularIMC(peso, altura);
+            const documentoBase64 = await lerArquivoBase64(documento);
+
+            const novoDado = { nome, peso, altura, imc, documento: documento.name, documentoBase64 };
+
+            // Recuperar dados existentes do Local Storage
+            const dadosSalvos = JSON.parse(localStorage.getItem("dadosIMC")) || [];
+            dadosSalvos.push(novoDado);
+
+            // Salvar os dados atualizados no Local Storage
+            localStorage.setItem("dadosIMC", JSON.stringify(dadosSalvos));
+
+            // Adicionar os dados à tabela
+            adicionarLinhaTabela(novoDado, dadosSalvos.length - 1);
+
+            // Limpar os campos do formulário
+            document.getElementById("formulario").reset();
+        }
+
+        // Função para adicionar uma linha à tabela
+        function adicionarLinhaTabela(dado, index) {
+            const tabela = document.getElementById("tabela-dados");
+            const novaLinha = tabela.insertRow();
+
+            novaLinha.innerHTML = `
+                <td>${dado.nome}</td>
+                <td>${dado.peso}</td>
+                <td>${dado.altura}</td>
+                <td>${dado.imc}</td>
+                <td><a href="${dado.documentoBase64}" target="_blank">${dado.documento}</a></td>
+                <td><button onclick="excluirLinha(${index})">Excluir</button></td>
+            `;
+        }
+
+        // Função para excluir uma linha
+        function excluirLinha(index) {
+            // Recuperar os dados do Local Storage
+            const dadosSalvos = JSON.parse(localStorage.getItem("dadosIMC")) || [];
+
+            // Remover o item pelo índice
+            dadosSalvos.splice(index, 1);
+
+            // Atualizar o Local Storage
+            localStorage.setItem("dadosIMC", JSON.stringify(dadosSalvos));
+
+            // Recarregar a tabela
+            carregarDados();
+        }
+
+        // Função para carregar os dados do Local Storage ao abrir a página
+        function carregarDados() {
+            const tabela = document.getElementById("tabela-dados");
+            tabela.innerHTML = ""; // Limpa a tabela antes de recarregar
+
+            const dadosSalvos = JSON.parse(localStorage.getItem("dadosIMC")) || [];
+            dadosSalvos.forEach((dado, index) => adicionarLinhaTabela(dado, index));
+        }
+
+        // Carregar os dados ao iniciar a página
+        window.onload = carregarDados;
+    </script>
+</body>
+</html>
